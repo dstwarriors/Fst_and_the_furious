@@ -18,14 +18,22 @@ plink --bfile all_phase3_filtered --clump GWAS_EA_excl23andMe_Clump.txt  --clump
  
 awk '{print $3}' all_phase_3_EA_clumped5e6.clumped  > GWAS_EA_SNPs_clumped5e6.txt
 
-plink --bfile all_phase3_filtered --recode vcf --out  all_phase3_filtered
+plink --bfile all_phase3_filtered --freq --recode vcf --out  all_phase3_filtered
+
+awk '{print $2 "\t" $5}' all_phase3_filtered.frq > all_phase3_MAF.txt
 
 sed -i 's/0\_//' GWAS_EA_Clumped.vcf
 
 vcftools --vcf all_phase3_filtered.vcf --weir-fst-pop African_samples.txt --weir-fst-pop European_samples.txt --out AFR_EUR_Genomewide_Filtered
 
+##################################################################### LDScore analysis
+
 
 perl Plink_split_by_chr.pl all_phase3_filtered all_phase3_filtered_chr #Download from https://gist.github.com/stephenturner/673269
+
+
+
+
 
 python ldsc/ldsc.py --bfile  all_phase3_filtered_chr${SLURM_ARRAY_TASK_ID} --keep European_samples.txt  --l2 --ld-wind-kb 10000 --out EUR_LDSC_chr${SLURM_ARRAY_TASK_ID} &
 
