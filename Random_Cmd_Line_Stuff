@@ -1,0 +1,60 @@
+ wget https://www.dropbox.com/s/afvvf1e15gqzsqo/all_phase3.pgen.zst?dl=1
+ wget https://www.dropbox.com/s/0nz9ey756xfocjm/all_phase3.pvar.zst?dl=1
+ wget https://www.dropbox.com/s/yozrzsdrwqej63q/phase3_corrected.psam?dl=1
+ wget https://www.dropbox.com/s/ho58e9jmytmpaf8/GWAS_EA_excl23andMe.txt
+ 
+  cut -f1,9 GWAS_EA_excl23andMe.txt > GWAS_EA_excl23andMe_Clump.txt
+ 
+ grep "AFR" phase3_corrected.psam | cut -f1 > African_samples.txt
+ grep "EUR" phase3_corrected.psam | cut -f1 > European_samples.txt
+ 
+ plink2 --zst-decompress all_phase3.pvar.zst > all_phase3.pvar
+
+ plink2 --pfile all_phase3 --maf 0.01 --hwe 1e-6 --autosome --max-alleles 2 --rm-dup exclude-all --make-bed --out all_phase3_filtered
+
+ cut -f1,9 GWAS_EA_excl23andMe.txt > GWAS_EA_excl23andMe_Clump.txt #Change column names to make work in next command
+ 
+plink --bfile all_phase3_filtered --clump GWAS_EA_excl23andMe_Clump.txt  --clump-p1 5e-6 --clump-kb 1000 --clump-r2 0.01 --exclude exclude.txt --out all_phase_3_EA_clumped5e6
+ 
+awk '{print $3}' all_phase_3_EA_clumped5e6.clumped  > GWAS_EA_SNPs_clumped5e6.txt
+
+plink --bfile all_phase3_filtered --recode vcf --out  all_phase3_filtered
+
+sed -i 's/0\_//' GWAS_EA_Clumped.vcf
+
+vcftools --vcf all_phase3_filtered.vcf --weir-fst-pop African_samples.txt --weir-fst-pop European_samples.txt --out AFR_EUR_Genomewide_Filtered
+
+
+perl Plink_split_by_chr.pl all_phase3_filtered all_phase3_filtered_chr #Download from https://gist.github.com/stephenturner/673269
+
+python ldsc/ldsc.py --bfile  all_phase3_filtered_chr${SLURM_ARRAY_TASK_ID} --keep European_samples.txt  --l2 --ld-wind-kb 10000 --out EUR_LDSC_chr${SLURM_ARRAY_TASK_ID} &
+
+python ldsc/ldsc.py --bfile all_phase3_filtered_chr${SLURM_ARRAY_TASK_ID} --keep African_samples.txt  --l2 --ld-wind-kb 10000 --out AFR_LDSC_chr${SLURM_ARRAY_TASK_ID}
+
+
+ tail -n +2 EUR_LDSC_chr2.l2.ldscore
+ tail -n +2 EUR_LDSC_chr2.l2.ldscore >EUR_c2.txt
+ tail -n +2 EUR_LDSC_chr3.l2.ldscore >EUR_c3.txt
+ tail -n +2 EUR_LDSC_chr4.l2.ldscore >EUR_c4.txt
+ tail -n +2 EUR_LDSC_chr5.l2.ldscore >EUR_c5.txt
+ tail -n +2 EUR_LDSC_chr6.l2.ldscore >EUR_c6.txt
+ tail -n +2 EUR_LDSC_chr7.l2.ldscore >EUR_c7.txt
+ tail -n +2 EUR_LDSC_chr8.l2.ldscore >EUR_c8.txt
+ tail -n +2 EUR_LDSC_chr9.l2.ldscore >EUR_c9.txt
+ tail -n +2 EUR_LDSC_chr10.l2.ldscore >EUR_c10.txt
+ tail -n +2 EUR_LDSC_chr11.l2.ldscore >EUR_c11.txt
+ tail -n +2 EUR_LDSC_chr12.l2.ldscore >EUR_c12.txt
+ tail -n +2 EUR_LDSC_chr13.l2.ldscore >EUR_c13.txt
+ tail -n +2 EUR_LDSC_chr14.l2.ldscore >EUR_c14.txt
+ tail -n +2 EUR_LDSC_chr15.l2.ldscore >EUR_c15.txt
+ tail -n +2 EUR_LDSC_chr16.l2.ldscore >EUR_c16.txt
+ tail -n +2 EUR_LDSC_chr17.l2.ldscore >EUR_c17.txt
+ tail -n +2 EUR_LDSC_chr17.l2.ldscore >EUR_c18.txt
+ tail -n +2 EUR_LDSC_chr18.l2.ldscore >EUR_c18.txt
+ tail -n +2 EUR_LDSC_chr19.l2.ldscore >EUR_c19.txt
+ tail -n +2 EUR_LDSC_chr2-.l2.ldscore >EUR_c20.txt
+ tail -n +2 EUR_LDSC_chr20.l2.ldscore >EUR_c20.txt
+ tail -n +2 EUR_LDSC_chr21.l2.ldscore >EUR_c21.txt
+ tail -n +2 EUR_LDSC_chr22.l2.ldscore >EUR_c22.txt
+ 
+ cat EUR_LDSC_chr1.l2.ldscore  EUR_c2.txt EUR_c3.txt EUR_c4.txt EUR_c5.txt EUR_c6.txt EUR_c7.txt EUR_c8.txt EUR_c9.txt EUR_c10.txt EUR_c11.txt EUR_c12.txt EUR_c13.txt EUR_c14.txt EUR_c15.txt EUR_c16.txt EUR_c17.txt EUR_c18.txt EUR_c19.txt EUR_c20.txt EUR_c21.txt EUR_c22.txt > EUR_LDSC_all.txt
