@@ -2,7 +2,7 @@
 # DST WARRIORS
 # FST and the furious code
 #
-# Written Kevin Bird
+# Written by Kevin Bird
 # Tidied by freerecall
 #
 #################################
@@ -54,7 +54,7 @@ GWAS_SNPs<-left_join(GWAS_SNPs,ALLSNPs,by="SNP")
 # Filt out non-GWAS SNPS
 NOGWASSNPs <-ALLSNPs %>% filter(!(SNP %in% GWAS_SNPs$SNP))
 
-# Sample: THIS WILL TAKE AWHILE
+# Bootstrapping: THIS WILL TAKE AWHILE
 NullFst<-as.data.frame(foreach(row=1:nrow(GWAS_SNPs), .combine='rbind') %do% 
                         sample_n(NOGWASSNPs %>% 
                         filter(MAF_quintile==GWAS_SNPs$MAF_quintile[row] & L2_quintile==GWAS_SNPs$L2_quintile[row]),10000,replace = T)$FST)
@@ -74,7 +74,7 @@ NullFstDist <- NullFst %>%
 # Signiifiance testing
 Sigtest<-z.test(GWAS_SNPs$FST,alternative="two.sided",mu=mean(NullFstDist$value),sigma.x = sd(GWAS_SNPs$FST))
 
-# Plot
+# Plot bootstrapped means
 ggplot(data=NullFstDist,aes(x=value))+
   labs(x="Mean Fst",title = "EduYear (Lee et al. 2018)")+
   geom_histogram(bins=50,fill="#377EB8",alpha=0.5)+
