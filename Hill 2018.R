@@ -29,7 +29,7 @@ library(BSDA)
 library(ggplot2)
 
 # Set working directory
-setwd("C:/Users/Eli/Documents/Fst/1KG")
+setwd("C:/Users/<>/Documents/Fst/1KG")
 
 # Set seed
 set.seed(5)
