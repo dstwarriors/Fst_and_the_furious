@@ -135,10 +135,11 @@ print(num2)
 
 # Test against null
 
-K<-1:10000
-L<-1:10000
+numm <- 1000
+K<-1:numm
+L<-1:numm
 TempDF <- Final[,names(Final) %in% c("Effect", "Beta", "Diff")]
-for(i in 1:1000){
+for(i in 1:numm){
 	F<-TempDF
 	Thing <- sample(1:nrow(TempDF),size=floor(nrow(TempDF)/2))
 	F$Effect[Thing] <- -1*TempDF$Effect[Thing]
