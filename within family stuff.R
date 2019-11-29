@@ -53,7 +53,7 @@ colnames(BF_GWAS_SNPs) <- c("CHR", "BP", "AL1", "AL2", "Beta", "Pval")
 
 #Pick columns
 
-WF_GWAS_SNPs <- WF_GWAS_SNPs[,names(WF_GWAS_SNPs) %in% c("ALLELE_1", "ALLELE_2", "Freq1", "Effect", "P_VALUE")]
+WF_GWAS_SNPs <- WF_GWAS_SNPs[,names(WF_GWAS_SNPs) %in% c("MARKER_ADDED", "ALLELE_1", "ALLELE_2", "Freq1", "Effect", "P_VALUE")]
 AfrFrq <- AfrFrq[,names(AfrFrq) %in% c("CHR", "BP", "A1", "A1_Frq_Afr", "A2", "A2_Frq_Afr")]
 EurFrq <- EurFrq[,names(EurFrq) %in% c("CHR", "BP", "A1", "A1_Frq_Eur", "A2", "A2_Frq_Eur")]
 
@@ -75,7 +75,7 @@ BF_GWAS_SNPs$BP <- as.character(BF_GWAS_SNPs$BP)
 
 # Join
 
-Frqs <- inner_join(AfrFrq, EurFrq, by=c("CHR", "BP", "A1", "A2", "N_ALLELES"))
+Frqs <- inner_join(AfrFrq, EurFrq, by=c("CHR", "BP", "A1", "A2"))
 Im <- inner_join(Frqs, WF_GWAS_SNPs, by=c("CHR", "BP"))
 Final <- inner_join(Im, BF_GWAS_SNPs, by=c("CHR", "BP"))
 
@@ -143,13 +143,13 @@ for(i in 1:1000){
 	Thing <- sample(1:nrow(TempDF),size=floor(nrow(TempDF)/2))
 	F$Effect[Thing] <- -1*TempDF$Effect[Thing]
 	F$Beta[Thing] <- -1*TempDF$Beta[Thing]
-	K[i] <- sum(F$Effect*(F$A1_Frq_Afr-F$A1_Frq_Eur))
-	L[i] <- sum(F$Beta*(F$A1_Frq_Afr-F$A1_Frq_Eur))
+	K[i] <- sum(F$Effect*(F$A1_Frq_Afr-F$A1_Frq_Eur))^2
+	L[i] <- sum(F$Beta*(F$A1_Frq_Afr-F$A1_Frq_Eur))^2
 }
 hist(K)
 hist(L)
-print(length(K[K<(num1-num2)])/length(K))
-print(length(L[L<num3])/length(L))
+print(length(K[K>(num1-num2)^2])/length(K))
+print(length(L[L>(num3)^2])/length(L))
 
 # Only genome-wide significant alleles
 
@@ -174,13 +174,13 @@ for(i in 1:10000){
 	Thing <- sample(1:nrow(TempDF),size=floor(nrow(TempDF)/2))
 	F2$Effect[Thing] <- -1*TempDF$Effect[Thing]
 	F2$Beta[Thing] <- -1*TempDF$Beta[Thing]
-	NullWF[i] <- sum(F2$Effect*F2$Diff)
-	NullBF[i] <- sum(F2$Beta*F2$Diff)
+	NullWF[i] <- sum(F2$Effect*F2$Diff)^2
+	NullBF[i] <- sum(F2$Beta*F2$Diff)^2
 }
 hist(NullWF)
 hist(NullBF)
-print(length(NullWF[NullWF<(num5-num6)])/length(NullWF))
-print(length(NullBF[NullBF<(num7-num8)])/length(NullBF))
+print(length(NullWF[NullWF>((num5-num6)^2)])/length(NullWF))
+print(length(NullBF[NullBF>((num7-num8)^2)])/length(NullBF))
 
 Matr <- 1:10
 for(i in 1:10){
