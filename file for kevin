@@ -1,0 +1,268 @@
+#################################
+# DST WARRIORS
+# FST and the furious code
+#
+# Written by Kevin Bird
+# Tidied by freerecall
+#
+#################################
+
+#packages
+
+packages<-function(x){
+  x<-as.character(match.call()[[2]])
+  if (!require(x,character.only=TRUE)){
+    install.packages(pkgs=x,repos="http://cran.r-project.org")
+    require(x,character.only=TRUE)
+  }
+}
+
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+# Install and load libraries
+packages(tidyr)
+packages(dplyr)
+packages(foreach)
+packages(BSDA)
+packages(ggplot2)
+packages(tibble)
+library(tidyr)
+library(tibble)
+library(dplyr)
+library(foreach)
+library(BSDA)
+library(ggplot2)
+
+# Set working directory
+setwd("C:/Users/<>/Documents/Fst/1KG")
+
+# Set seed
+set.seed(5)
+
+# Read in dfs
+all_phase3_MAF <- read.delim("all_phase3_MAF_old.txt", stringsAsFactors=FALSE)
+EUR_LDSC_all <- read.delim("EUR_LDSC_all_old.txt", stringsAsFactors=FALSE)
+AFR_EUR_Genomewide_Filtered.weir <- read.delim("AFR_EUR_Genomewide_Filtered.weir_old.fst")
+OG_GWAS_SNPs <- read.delim("GWAS_EA_excl23andMe.txt", header=TRUE, stringsAsFactors=FALSE)
+
+# Standardize col names
+colnames(AFR_EUR_Genomewide_Filtered.weir) <- c("CHR", "BP", "FST")
+colnames(OG_GWAS_SNPs) <- c("SNP", "CHR", "BP", "A1", "A2", "EAF", "BETA", "SE", "PVAL")
+
+#Cut out non-GWS ones
+GWAS_SNPs <- OG_GWAS_SNPs[OG_GWAS_SNPs$PVAL<=5*10^(-8),]
+
+# Test if look right
+
+head(AFR_EUR_Genomewide_Filtered.weir)
+head(GWAS_SNPs)
+
+# Combine dataframes
+EUR_LDSC_all<-inner_join(EUR_LDSC_all,all_phase3_MAF,by="SNP")
+EUR_LDSC_all<-inner_join(EUR_LDSC_all,AFR_EUR_Genomewide_Filtered.weir,by=c("CHR","BP"))
+
+# Grab MAF
+MAF <- all_phase3_MAF$MAF
+
+# Calculate MAF Quintile and L2 quintile
+ALLSNPs <- within(EUR_LDSC_all, MAF_quintile <- as.integer(cut(MAF, quantile(MAF, probs=0:20/20), include.lowest=TRUE)))
+ALLSNPs <- within(ALLSNPs, L2_quintile <- as.integer(cut(L2, quantile(L2, probs=0:20/20), include.lowest=TRUE)))
+
+# Combine df by SNP
+GWAS_SNPs<-inner_join(GWAS_SNPs,ALLSNPs,by=c("SNP", "CHR", "BP"))
+
+# Filt out non-GWAS SNPS
+NOGWASSNPs <- ALLSNPs %>% filter(!(SNP %in% GWAS_SNPs$SNP))
+#NOGWASSNPs <- inner_join(NOGWASSNPs, OG_GWAS_SNPs, by=c("CHR", "BP", "SNP"))
+#NOGWASSNPsP <- NOGWASSNPs[NOGWASSNPs$BETA>0,]
+#NOGWASSNPsN <- NOGWASSNPs[NOGWASSNPs$BETA<0,]
+#NOGWASSNPsPH <- NOGWASSNPsP[NOGWASSNPsP$BETA>median(NOGWASSNPsP$BETA),]
+#NOGWASSNPsPL <- NOGWASSNPsP[NOGWASSNPsP$BETA<median(NOGWASSNPsP$BETA),]
+#NOGWASSNPsNH <- NOGWASSNPsN[NOGWASSNPsN$BETA>median(NOGWASSNPsN$BETA),]
+#NOGWASSNPsNL <- NOGWASSNPsN[NOGWASSNPsN$BETA<median(NOGWASSNPsN$BETA),]
+NOGWASSNPsPH <- NOGWASSNPs 
+NOGWASSNPsPL <- NOGWASSNPs 
+NOGWASSNPsNH <- NOGWASSNPs 
+NOGWASSNPsNL <- NOGWASSNPs 
+
+# Stratify
+GWAS_SNPsN <- GWAS_SNPs[GWAS_SNPs$BETA<0,]
+GWAS_SNPsP <- GWAS_SNPs[GWAS_SNPs$BETA>0,]
+GWAS_SNPsNH <- GWAS_SNPsN[GWAS_SNPsN$BETA>median(GWAS_SNPsN$BETA),]
+GWAS_SNPsNL <- GWAS_SNPsN[GWAS_SNPsN$BETA<median(GWAS_SNPsN$BETA),]
+GWAS_SNPsPH <- GWAS_SNPsP[GWAS_SNPsP$BETA>median(GWAS_SNPsP$BETA),]
+GWAS_SNPsPL <- GWAS_SNPsP[GWAS_SNPsP$BETA<median(GWAS_SNPsP$BETA),]
+
+# Test
+
+#head(GWAS_SNPsP)
+#head(GWAS_SNPsN)
+#head(ALLSNPs)
+#head(EUR_LDSC_all)
+#summary(GWAS_SNPsP)
+#summary(GWAS_SNPsN)
+
+#GWAS_SNPsP <- GWAS_SNPsP[sample(1:nrow(GWAS_SNPsP), size=floor(nrow(GWAS_SNPsP)/3), replace=F),]
+#GWAS_SNPsN <- GWAS_SNPsN[sample(1:nrow(GWAS_SNPsN), size=floor(nrow(GWAS_SNPsN)/3), replace=F),]
+
+# Positive high alleles
+
+# Bootstrapping for +: THIS WILL TAKE AWHILE
+NullFstPH<-as.data.frame(foreach(row=1:nrow(GWAS_SNPsPH), .combine='rbind') %do% 
+                        sample_n(NOGWASSNPsPH %>% 
+                        filter(MAF_quintile==GWAS_SNPsPH$MAF_quintile[row] & L2_quintile==GWAS_SNPsPH$L2_quintile[row]),10000,replace = T)$FST)
+
+
+# Set negative and null values to 0
+NullFstPH[NullFstPH < 0]<-0
+NullFstPH[is.na(NullFstPH)]<-0
+GWAS_SNPsPH$FST[GWAS_SNPsPH$FST<0]<-0
+
+# Compute means
+NullFstDistPH <- NullFstPH %>% 
+  summarise_each(funs(mean)) %>% 
+  gather() %>% 
+  select(-key)
+
+# Significance testing
+SigtestPH<-z.test(GWAS_SNPsPH$FST,alternative="two.sided",mu=mean(NullFstDistPH$value),sigma.x = sd(GWAS_SNPsPH$FST))
+
+# Plot bootstrapped means
+PlotPH <- ggplot(data=NullFstDistPH,aes(x=value))+
+  labs(x="Mean Fst",title = "EduYear (Lee et al. 2018) - Positive Large Genome-Wide Significant Alleles")+
+  geom_histogram(bins=50,fill="#377EB8",alpha=0.5)+
+  annotate(geom="text",x=0.0655,y=500, label=paste0("P=",round(SigtestPH$p.value,digits = 3)))+
+  geom_vline(xintercept = mean(GWAS_SNPsPH$FST))
+
+# Positive low SNPs
+
+# Bootstrapping for +: THIS WILL TAKE AWHILE
+NullFstPL<-as.data.frame(foreach(row=1:nrow(GWAS_SNPsPL), .combine='rbind') %do% 
+                        sample_n(NOGWASSNPsPL %>% 
+                        filter(MAF_quintile==GWAS_SNPsPL$MAF_quintile[row] & L2_quintile==GWAS_SNPsPL$L2_quintile[row]),10000,replace = T)$FST)
+
+
+# Set negative and null values to 0
+NullFstPL[NullFstPL < 0]<-0
+NullFstPL[is.na(NullFstPL)]<-0
+GWAS_SNPsPL$FST[GWAS_SNPsPL$FST<0]<-0
+
+# Compute means
+NullFstDistPL <- NullFstPL %>% 
+  summarise_each(funs(mean)) %>% 
+  gather() %>% 
+  select(-key)
+
+# Signifiance testing
+SigtestPL<-z.test(GWAS_SNPsPL$FST,alternative="two.sided",mu=mean(NullFstDistPL$value),sigma.x = sd(GWAS_SNPsPL$FST))
+
+# Plot bootstrapped means
+PlotPL <- ggplot(data=NullFstDistPL,aes(x=value))+
+  labs(x="Mean Fst",title = "EduYear (Lee et al. 2018) - Negative Genome-Wide Significant Alleles")+
+  geom_histogram(bins=50,fill="#377EB8",alpha=0.5)+
+  annotate(geom="text",x=0.0655,y=500, label=paste0("P=",round(SigtestPL$p.value,digits = 3)))+
+  geom_vline(xintercept = mean(GWAS_SNPsPL$FST))	
+
+# Negative high alleles
+
+# Bootstrapping for +: THIS WILL TAKE AWHILE
+NullFstNH<-as.data.frame(foreach(row=1:nrow(GWAS_SNPsNH), .combine='rbind') %do% 
+                        sample_n(NOGWASSNPsNH %>% 
+                        filter(MAF_quintile==GWAS_SNPsNH$MAF_quintile[row] & L2_quintile==GWAS_SNPsNH$L2_quintile[row]),10000,replace = T)$FST)
+
+
+# Set negative and null values to 0
+NullFstNH[NullFstNH < 0]<-0
+NullFstNH[is.na(NullFstNH)]<-0
+GWAS_SNPsNH$FST[GWAS_SNPsNH$FST<0]<-0
+
+# Compute means
+NullFstDistNH <- NullFstNH %>% 
+  summarise_each(funs(mean)) %>% 
+  gather() %>% 
+  select(-key)
+
+# Significance testing
+SigtestNH<-z.test(GWAS_SNPsNH$FST,alternative="two.sided",mu=mean(NullFstDistNH$value),sigma.x = sd(GWAS_SNPsNH$FST))
+
+# Plot bootstrapped means
+PlotNH <- ggplot(data=NullFstDistNH,aes(x=value))+
+  labs(x="Mean Fst",title = "EduYear (Lee et al. 2018) - Positive Genome-Wide Significant Alleles")+
+  geom_histogram(bins=50,fill="#377EB8",alpha=0.5)+
+  annotate(geom="text",x=0.0655,y=500, label=paste0("P=",round(SigtestNH$p.value,digits = 3)))+
+  geom_vline(xintercept = mean(GWAS_SNPsNH$FST))
+
+# Positive low SNPs
+
+# Bootstrapping for +: THIS WILL TAKE AWHILE
+NullFstNL<-as.data.frame(foreach(row=1:nrow(GWAS_SNPsNL), .combine='rbind') %do% 
+                        sample_n(NOGWASSNPsNL %>% 
+                        filter(MAF_quintile==GWAS_SNPsNL$MAF_quintile[row] & L2_quintile==GWAS_SNPsNL$L2_quintile[row]),10000,replace = T)$FST)
+
+
+# Set negative and null values to 0
+NullFstNL[NullFstNL < 0]<-0
+NullFstNL[is.na(NullFstNL)]<-0
+GWAS_SNPsNL$FST[GWAS_SNPsNL$FST<0]<-0
+
+# Compute means
+NullFstDistNL <- NullFstNL %>% 
+  summarise_each(funs(mean)) %>% 
+  gather() %>% 
+  select(-key)
+
+# Signifiance testing
+SigtestNL<-z.test(GWAS_SNPsNL$FST,alternative="two.sided",mu=mean(NullFstDistNL$value),sigma.x = sd(GWAS_SNPsNL$FST))
+
+# Plot bootstrapped means
+PlotNL <- ggplot(data=NullFstDistNL,aes(x=value))+
+  labs(x="Mean Fst",title = "EduYear (Lee et al. 2018) - Negative Genome-Wide Significant Alleles")+
+  geom_histogram(bins=50,fill="#377EB8",alpha=0.5)+
+  annotate(geom="text",x=0.0655,y=500, label=paste0("P=",round(SigtestNL$p.value,digits = 3)))+
+  geom_vline(xintercept = mean(GWAS_SNPsNL$FST))	
+
+multiplot(PlotPH, PlotPL, PlotNH, PlotNL, cols=2, rows=2)
